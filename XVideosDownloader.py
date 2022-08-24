@@ -1,13 +1,15 @@
-from XVideo import XVideo as xv
+import os
+import asyncio
+from XVideo import XVideo
+from Downloader import Downloader
 
-# link='https://www.xvideos.com/video68984225/_erasmus_'
+# link='https://www.xvideos.com/video32367025/_dategirl.top_'
+link='https://www.xvideos.com/video30380011/_'
 # link = 'https://www.xvideos.com/video7388507/_'
-link='https://www.xvideos.com/video49521087/_._'
+# link='https://www.xvideos.com/video49521087/_._'
 
-a=xv(URL=link)
-a.Retrieve()
-print(a.title)
-print(a.preview_name)
+video=XVideo(URL=link)
+video.Retrieve()
 
-with open(a.preview_name,'wb') as result:
-    result.write(a.preview_bytes)
+downloader=Downloader()
+downloader.Download(name=video.title,links=video.Resolutions()[-1][1])

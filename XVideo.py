@@ -1,9 +1,10 @@
 import re
+from typing import List
 from requests_html import HTMLSession
-import requests
 import os
 
 class XVideo:
+    
     def __init__(self, *, URL: str) -> None:
         # Known:
         self.URL = URL
@@ -21,75 +22,20 @@ class XVideo:
         # Special:
         self.__steps__={}
         self.__main_page__=None
-        self.__resolutionsplaylist__=None
+        self.__resolutions_playlist__=None
 
     def __del__(self) -> None:
         self.__session__.close()
         del self.__session__
-        print(self.title, 'destroyed')
+        print(f'\n"{self.title}" destroyed')
 
     def __passed__(self, step):
         self.__steps__[step]=True
     def __failed__(self, step):
         self.__steps__[step]=False
 
-
-
     
-
-    
-
-    # def __getHLS__(self) -> None:
-    #     step='HLS'
-    #     self.__failed__(step)
-    #     try:
-    #         planA = self.__main_page__.html.search(".setVideoHLS('{}')")
-    #         if planA is not None:
-    #             hlsURL = planA[0]
-    #             self.__HLS__ = self.__session__.get(hlsURL)
-    #             with open('HLS.m3u8', 'w') as hlsfile:
-    #                 hlsfile.write(self.__HLS__.text)
-    #         else:
-    #             return
-    #         self.__prefix__ = hlsURL[:hlsURL.rindex('hls.m3u8')]
-    #         self.__suffix__ = hlsURL[hlsURL.rindex('.m3u8')+5:]
-    #         self.__passed__(step)
-    #     except:
-    #         pass
-
-    # def __getResolutionList__(self) -> None:
-    #     step='ResolutionList'
-    #     self.__failed__(step)
-    #     try:
-    #         #Links for playlists:
-    #         self.__Resolutions__=re.findall('hls-\d+p-?\w*\.m3u8',self.__HLS__.text)
-
-    #         #(Vertical Resolution as int (for sorting),Link for playlist) List:
-    #         self.__Resolutions__=[(int(re.search('\d+p',x)[0][:-1]),self.__prefix__+x) for x in self.__Resolutions__]
-    #         self.__Resolutions__=sorted(self.__Resolutions__)
-            
-    #         self.__passed__(step)
-    #     except:
-    #         print('Step except')
-    #         pass
-    
-    # def DownloadMaxResolution(self) -> None:
-    #     maxResM3U8=self.__session__.get(self.__Resolutions__[-1][1])
-    #     fileLinks=[self.__prefix__+x for x in re.findall('hls-\d+p-?\w*\.ts',maxResM3U8.text)]
-    #     print(f'First file:\n{fileLinks[0]}')
-    #     with open('result.ts','wb') as result:
-    #         result.write(self.__session__.get(fileLinks[0]).content)
-    #         response=requests.get(fileLinks[0],stream=True)
-    #         total_length=response.headers.get('content-length')
-    #         if total_length is None:
-    #             result.write(response.content)
-    #         else:
-    #             progress=0
-    #             total_length=int(total_length)
-    #             for part in response.iter_content(chunk_size=4096):
-    #                 progress+=len(part)
-    #                 result.write(part)
-    #                 print(f'\rProgress: {progress*100//total_length}%')
+    # Retrieving video's data steps:
 
     def __get_main_page__(self) -> None:
         step='Main page'
@@ -124,10 +70,61 @@ class XVideo:
         else:
             self.__failed__(step)
 
+    def __get_resolutions_playlist__(self) -> None:
+        step='Resolutions playlist'
+        try:
+            planA = self.__main_page__.html.search(".setVideoHLS('{}')")
+            if planA is not None:
+                self.__resolutions_playlist__= self.__session__.get(planA[0]).text
+                self.__prefix__ = os.path.dirname(planA[0])+'/'
+            else:
+                self.__failed__(step)
+            self.__passed__(step)
+        except:
+            self.__failed__(step)
+
+    def __get_resolution_list__(self) -> None:
+        step='Resolution list'
+        try:
+            #Playlists links' suffixes:
+            self.__resolutions__=re.findall('hls-\d+p-?\w*\.m3u8\S*',self.__resolutions_playlist__)
+
+            #Sorted from lowest to highest + links:
+            self.__resolutions__=[(int(re.search('\d+p',x)[0][:-1]),self.__prefix__+x) for x in self.__resolutions__]
+            self.__resolutions__=sorted(self.__resolutions__)
+            resolutions=[]
+            for x in self.__resolutions__:
+                sub_step=f'Links for {x[0]}'
+                try:
+                    current_playlist=self.__session__.get(x[1]).text
+                    parts=re.findall('hls-\d+p-?\w*\.ts',current_playlist)
+                    parts=[self.__prefix__+x for x in parts]
+                    res=(str(x[0])+'p',parts)
+                    resolutions.append(res)
+                except:
+                    self.__failed__(sub_step)
+            self.__resolutions__=resolutions
+
+            self.__passed__(step)
+        except:
+            self.__failed__(step)
+
+    
     # Public methods:
 
     def Retrieve(self) -> None:
+        """Retrieves all data of this video"""
         self.__get_main_page__()
+        
         self.__get_title__()
         self.__get_preview__()
+
+        self.__get_resolutions_playlist__()
+        self.__get_resolution_list__()
+
         self.__session__.close()
+
+    def Resolutions(self) -> List:
+        """Returns a list of tuples
+        Element example: ('720p', *list of links for parts of the video*)"""
+        return self.__resolutions__
