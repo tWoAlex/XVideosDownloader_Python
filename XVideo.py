@@ -19,6 +19,11 @@ class XVideo:
         self.__resolutions__= None
         self.__session__ = HTMLSession()
 
+        # Technical patterns:
+        
+            # Part name example: 'hls-1080p-13c650.ts?e=1662139743&l=0&h=cbe980cff92bcf3ce14928e1f19b53e3'
+        self.__video_part_pattern__='hls-\d+p-?\w*\.ts\??[=&\w]*'
+
         # Special:
         self.__steps__={}
         self.__main_page__=None
@@ -27,7 +32,6 @@ class XVideo:
     def __del__(self) -> None:
         self.__session__.close()
         del self.__session__
-        print(f'\n"{self.title}" destroyed')
 
     def __passed__(self, step):
         self.__steps__[step]=True
@@ -61,7 +65,6 @@ class XVideo:
 
     def __get_preview__(self) -> None:
         step='Preview'
-
         planA = self.__main_page__.html.search('<meta property="og:image" content="{}" />')
         if planA is not None:
             self.preview_name=os.path.basename(planA[0])
@@ -75,8 +78,8 @@ class XVideo:
         try:
             planA = self.__main_page__.html.search(".setVideoHLS('{}')")
             if planA is not None:
-                self.__resolutions_playlist__= self.__session__.get(planA[0]).text
-                self.__prefix__ = os.path.dirname(planA[0])+'/'
+                self.__resolutions_playlist__=self.__session__.get(planA[0]).text
+                self.__prefix__=os.path.dirname(planA[0])+'/'
             else:
                 self.__failed__(step)
             self.__passed__(step)
@@ -86,7 +89,7 @@ class XVideo:
     def __get_resolution_list__(self) -> None:
         step='Resolution list'
         try:
-            #Playlists links' suffixes:
+            #Playlists links' suffixes :
             self.__resolutions__=re.findall('hls-\d+p-?\w*\.m3u8\S*',self.__resolutions_playlist__)
 
             #Sorted from lowest to highest + links:
@@ -97,7 +100,7 @@ class XVideo:
                 sub_step=f'Links for {x[0]}'
                 try:
                     current_playlist=self.__session__.get(x[1]).text
-                    parts=re.findall('hls-\d+p-?\w*\.ts',current_playlist)
+                    parts=re.findall(self.__video_part_pattern__,current_playlist)
                     parts=[self.__prefix__+x for x in parts]
                     res=(str(x[0])+'p',parts)
                     resolutions.append(res)

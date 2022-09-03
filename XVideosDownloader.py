@@ -1,5 +1,3 @@
-import os
-import asyncio
 from XVideo import XVideo
 from Downloader import Downloader
 
@@ -11,5 +9,5 @@ link='https://www.xvideos.com/video30380011/_'
 video=XVideo(URL=link)
 video.Retrieve()
 
-downloader=Downloader()
+downloader = Downloader()
 downloader.Download(name=video.title,links=video.Resolutions()[-1][1])
