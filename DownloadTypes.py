@@ -53,7 +53,6 @@ class MultiLinkDownload:
     async def __download_stream__(self):
         while not self.__links__.empty():
             link=await self.__links__.get()
-            # fileName=os.path.basename(link)
             fileName=re.search('hls-\d+p-?\w*\.ts',link)[0]
 
             r=await self.__session__.get(link)
@@ -63,13 +62,6 @@ class MultiLinkDownload:
                     self.Progress.AddProgress(len(chunk))
                     resultFile.write(chunk)
                     self.Progress.release()
-
-            # Older way:
-            # r=await self.__session__.get(link)
-            # with open(f'Downloads\\{fileName}','wb') as resultFile:
-            #     print(f'In contextmanager for {fileName}')
-            #     resultFile.write(r.content)
-            #     print(f'Finished contextmanager for {fileName}')
 
     def __downdload_task__(self) -> asyncio.Task:
         loop=asyncio.get_event_loop()
